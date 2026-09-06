@@ -1,141 +1,220 @@
 # OCEANNOVA
 
-**AI-Powered Hyperspectral Ocean Anomaly Intelligence**
+OCEANNOVA is an AI‑Powered Hyperspectral Ocean Anomaly Intelligence system for satellite ocean‑colour data. It detects unusual spectral signatures, ranks likely causes (e.g., algal blooms, suspended sediments, runoff), estimates confidence, and flags true unknowns—turning raw ocean‑colour anomalies into evidence‑backed, reviewable insights for researchers.
 
-> When the ocean looks different, OCEANNOVA finds it, explains what changed, estimates why, and tells researchers when the anomaly doesn't look like anything they already know.
+Primary languages: TypeScript (84.3%), Python (12.1%), CSS (3.5%), JavaScript (0.1%)
 
-DETECT → EXPLAIN → CLASSIFY → FLAG THE UNKNOWN
+---
 
-## What this is
+## Quick overview
 
-OCEANNOVA turns NASA PACE hyperspectral ocean-colour data (200+ wavelengths,
-UV through NIR) into a scientific screening workflow: it learns what normal
-ocean spectral signatures look like for a region, flags pixels that deviate,
-classifies the *likely* observable cause using spectral + environmental
-context, and — critically — does **not** force every anomaly into a known
-category. Low-confidence or out-of-distribution signatures are explicitly
-flagged `unknown_mixed` for human review.
+- Detects spectral anomalies in hyperspectral ocean-colour imagery.
+- Produces ranked, explainable candidate causes and a confidence score for each detection.
+- Designed for reviewable outputs: per-detection evidence, per-band contributions, and exportable reports.
+- Intended as a full-stack project: TypeScript for UI/orchestration and Python for ML/data processing.
 
-The cause taxonomy spans two tiers:
+---
 
-- **Direct optical causes** — things ocean-colour reflectance can plausibly
-  detect fairly directly: `phytoplankton_bloom`, `red_tide`, `turbidity`,
-  `sediment_plume`, `sediment_intrusion`, `cdom_terrestrial`, `oil_spill`.
-- **Proxy event causes** — geophysical/dynamical events ocean colour cannot
-  see directly, only a secondary optical/thermal signature they can leave
-  behind: `volcanic_eruption`, `earthquake_seismic`, `tsunami`,
-  `heatwave_ecosystem`, `unusual_current_disturbance`. The pipeline and demo
-  UI flag these explicitly as proxy signatures, not direct detections, and
-  recommend cross-checking against independent data (seismic networks, tide
-  gauges, thermal imagery) before acting on them.
+## Key features
 
-This is not a claim to have invented anomaly detection, phytoplankton
-classification, or hyperspectral ocean analysis — all of those exist. The
-contribution is combining anomaly detection + explanation + competing-cause
-classification + an explicit unknown pathway into one workflow. See
-[`docs/OCEANNOVA_Full_Hackathon_Plan.pdf`](docs/OCEANNOVA_Full_Hackathon_Plan.pdf)
-for the full pitch, market landscape, and positioning.
+- Hyperspectral anomaly detection pipeline (ingest → preprocess → detect → explain → rank).
+- Evidence-backed outputs: spectral slices, band contributions, and confidence estimates.
+- Ranking of likely causes (e.g., bloom vs. sediment vs. runoff) with explainability artifacts.
+- Exportable, reviewable results (JSON/CSV, report generation).
+- Designed for batch processing of satellite scenes and for interactive review via a web UI.
 
-## Status
+---
 
-This repo currently runs end-to-end on **synthetic PACE-shaped data**
-(see [`src/oceannova/synthetic_data.py`](src/oceannova/synthetic_data.py))
-so the full pipeline — preprocessing, anomaly detection, classification,
-unknown detection, explainability, and the interactive demo — is testable
-offline before real PACE granules are downloaded and wired in via
-[`src/oceannova/io_pace.py`](src/oceannova/io_pace.py).
+## Repository composition (from analysis)
 
-## Data sources (self-fed model)
+- TypeScript: 84.3% — likely front‑end, orchestration, and integration code.
+- Python: 12.1% — likely ML, preprocessing, model training/inference.
+- CSS / JavaScript: small amounts for UI styling and interop.
 
-OCEANNOVA is **not** a data-fed model — it does not accept user uploads. It
-pulls directly from public Earth-observation sources and runs its pipeline on
-whatever they currently publish. The canonical, machine-readable registry of
-these sources lives in
-[`src/oceannova/data_sources.py`](src/oceannova/data_sources.py):
+---
 
-- **NASA Earthdata — PACE OCI L2 granules** (`PACE_OCI_L2_BGC` /
-  `PACE_OCI_L2_AOP`) — primary input. Search:
-  https://search.earthdata.nasa.gov/
-- **NOAA HAB bulletins** (NOAA NCCOS) — cross-check layer for bloom / red-tide
-  classifications.
-- **Natural Earth shapefiles** — land/ocean mask via `geopandas`.
-- **earthaccess** — helper for authenticated Earthdata downloads
-  (`pip install earthaccess`).
-- **xarray, netCDF4** — open the NetCDF L2 granules in Python (see
-  `io_pace.py`).
+## Architecture (conceptual)
 
-Run `python -m oceannova.data_sources` to print the full registry as JSON.
+1. Ingest
+   - Satellite hyperspectral data (GeoTIFF / NetCDF / ENVI / HDF5 or other radiance/reflectance cube formats), with geolocation and acquisition metadata.
+2. Preprocess
+   - Radiometric/atmospheric corrections, masking, band selection, metadata normalization.
+3. Detection
+   - Spectral anomaly detection (unsupervised and/or supervised) to identify candidate anomalous pixels/regions.
+4. Explanation & Ranking
+   - Per-candidate spectral attribution, cause-ranking model, uncertainty quantification.
+5. Output & Review
+   - Structured JSON reports, visualization assets (spectral plots, thumbnails), and a web UI for analyst review.
 
-## Quickstart
+---
 
+## Prerequisites
 
-```bash
-git clone <your-repo-url>
-cd oceannova
-python -m venv .venv && source .venv/bin/activate   # or use conda
-pip install -r requirements.txt
+- Node.js (LTS recommended; >=16)
+- npm, yarn, or pnpm
+- Python 3.9+ (3.10+ recommended) and pip
+- (Optional) GPU and CUDA drivers if model inference/training uses GPU acceleration
+- (Optional) Docker / Docker Compose for reproducible deployment
 
-# Run the full pipeline (anomaly detection -> classification -> evidence cards)
-python -m oceannova.pipeline
+---
 
-# Launch the interactive demo (map + spectrum + evidence card)
-streamlit run app/streamlit_app.py
+## Getting started — developer quickstart
 
-# Run tests
-pytest tests/
-```
+These steps assume a split repo with a TypeScript frontend/orchestrator and a Python ML/backend component. Adjust directories to your repository layout (e.g., `frontend/`, `web/`, `backend/`, `ml/`).
 
-## Pipeline
+1. Clone
+   - git clone https://github.com/dragunxwho13/OceanNova.git
+   - cd OceanNova
 
-```
-PACE hyperspectral data (+ NOAA / ISRO context, optional)
-  -> Quality control
-  -> Spectral preprocessing (normalize + derivative features)
-  -> Stage 1: Anomaly detection      (PCA + Isolation Forest)
-  -> Stage 2: Cause classification   (Random Forest, spectral + env features)
-  -> Stage 3: Unknown/OOD detection  (confidence threshold -> unknown_mixed)
-  -> Explainability (spectrum vs. baseline, top deviating wavelengths)
-  -> Interactive map + evidence card (Streamlit + Plotly)
-```
+2. Frontend / TypeScript (if present)
+   - cd frontend        # or the directory where package.json lives
+   - npm install        # or yarn / pnpm install
+   - npm run dev        # run in development
+   - npm run build      # build production bundle
+   - npm run start      # start production server (if defined)
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for module-by-module
-detail and design rationale.
+3. Python / ML backend (if present)
+   - cd backend         # or ml/, models/, or repository root depending on layout
+   - python -m venv .venv
+   - source .venv/bin/activate   # Windows: .venv\Scripts\activate
+   - pip install -r requirements.txt
+   - # Example run (adjust to project):
+     - uvicorn app.main:app --reload   # if FastAPI
+     - or flask --app app run          # if Flask
+     - or python -m ocean_nova.entrypoint --help
 
+4. Environment
+   - Copy and edit environment template:
+     - cp .env.example .env
+   - Typical variables:
+     - DATA_DIR=/path/to/satellite/data
+     - MODEL_PATH=/path/to/model/checkpoint
+     - S3_BUCKET=your-bucket
+     - LOG_LEVEL=INFO
+     - BACKEND_PORT=8000
+     - FRONTEND_PORT=3000
 
-## Using real PACE data
+5. Docker (optional)
+   - If a Dockerfile/docker-compose.yml exists:
+     - docker-compose up --build
 
-1. Create a free [NASA Earthdata account](https://urs.earthdata.nasa.gov/).
-2. Search for granules at [earthdata.nasa.gov/search](https://search.earthdata.nasa.gov/)
-   — product `PACE_OCI_L2_AOP` (apparent optical properties, includes Rrs)
-   or `PACE_OCI_L2_BGC` (chlorophyll / biogeochemistry).
-3. Download a small subset — one granule, one region (e.g. Arabian Sea /
-   Bay of Bengal bounding box) — not the full global archive.
-4. `pip install xarray netCDF4 earthaccess`
-5. Implement `load_pace_granule()` in
-   [`src/oceannova/io_pace.py`](src/oceannova/io_pace.py) to return the same
-   tidy `lat, lon, band_<wavelength>..., sst_c` DataFrame shape that
-   `synthetic_data.generate_scene()` produces — every downstream module
-   (preprocessing, anomaly detection, classification) works unchanged.
+---
 
-## Known limitations
+## Input data and expected formats
 
-- Synthetic classes are cleanly separable by construction — classifier
-  metrics on synthetic data are **not** representative of real-world
-  performance. Validate against real PACE data + ground truth (e.g. NOAA
-  HAB bulletins) before drawing scientific conclusions.
-- The "proxy event" classes (volcanic eruption, earthquake, tsunami, unusual
-  current disturbance) are NOT direct detections of those events — ocean
-  colour only observes a secondary optical/thermal effect that *might* be
-  associated with one. Treat a prediction in this group as a lead to check
-  against independent data, never as a confirmed event.
-- Satellite hyperspectral data observes ocean-surface/near-surface optical
-  properties only. It cannot directly observe subsurface or seafloor
-  phenomena (e.g. hydrothermal vents) — deeper causes require
-  complementary in-situ or geological evidence.
-- The anomaly baseline here is fit per-scene; a production system should
-  use a regional/seasonal climatology baseline instead (see
-  [`docs/ROADMAP.md`](docs/ROADMAP.md)).
+- Input: hyperspectral ocean‑colour scenes. Supported containers commonly include:
+  - GeoTIFF with multiple bands, or ENVI/BSQ style files, or NetCDF/HDF5 scene cubes.
+- Each scene should contain:
+  - Spatial grid (lat/lon or geospatial transform)
+  - Per-band radiance/reflectance values
+  - Acquisition metadata (sensor, timestamp, solar/view angles)
+- Preprocessing expectations: atmospheric correction and sensor calibration are recommended before detection; the pipeline includes normalization and masking steps but validate against your sensor.
 
-## License
+---
 
-MIT — see [`LICENSE`](LICENSE).
+## Output format (example)
+
+The system emits structured anomaly reports per scene and per candidate. Example JSON (trimmed):
+
+{
+  "scene_id": "SENSOR_20260901_123456",
+  "generated_at": "2026-09-06T12:34:56Z",
+  "candidates": [
+    {
+      "id": "cand_0001",
+      "geometry": { "type": "Polygon", "coordinates": [ ... ] },
+      "pixel_centroid": [lat, lon],
+      "spectral_signature": {
+        "wavelengths_nm": [400, 410, ...],
+        "reflectance": [0.003, 0.004, ...]
+      },
+      "anomaly_score": 0.97,
+      "likely_causes": [
+        { "label": "algal_bloom", "score": 0.71 },
+        { "label": "suspended_sediment", "score": 0.18 },
+        { "label": "runoff", "score": 0.07 }
+      ],
+      "explanation": {
+        "band_contributions": [ {"band": 10, "contribution": 0.32}, ... ],
+        "notes": "strong chlorophyll-like peak at 678 nm"
+      },
+      "evidence_files": {
+        "thumbnail_png": "outputs/SENSOR_.../cand_0001_thumb.png",
+        "spectral_plot_png": "outputs/.../cand_0001_plot.png"
+      }
+    }
+  ]
+}
+
+---
+
+## API (typical endpoints — adapt to your implementation)
+
+- POST /api/v1/detect
+  - Body: scene or path to scene
+  - Returns: detection report JSON (as above)
+- GET /api/v1/status
+  - Returns: service health and model versions
+- GET /api/v1/results/{id}
+  - Returns: saved detection report and artifacts
+
+Use authentication/authorization for production deployments.
+
+---
+
+## Models, training & evaluation (guidance)
+
+- Models may include unsupervised detectors (autoencoders, one-class models), statistical anomaly detectors, and supervised classifiers for cause ranking.
+- Keep model checkpoints and training logs out of the repo (use an artifacts bucket).
+- Recommended evaluation metrics:
+  - Detection: precision, recall, F1, false alarm rate, detection latency
+  - Ranking: top‑1 accuracy, top‑k accuracy, calibration (confidence vs. accuracy)
+- Use curated labeled scenes for benchmarking and k-fold strategies for limited labels.
+
+---
+
+## Testing
+
+- Frontend: run unit and integration tests (e.g., npm test / yarn test)
+- Python: pytest recommended; run tests with:
+  - pytest -q
+- Add CI that runs linters, unit tests, and sample inference on a small test scene.
+
+---
+
+## Deployment notes
+
+- ML inference can be CPU or GPU accelerated. For production, serve model via a model server (TorchServe, TensorFlow Serving, or FastAPI+Uvicorn with GPU).
+- Use object storage (S3 or equivalent) for large scene data and artifacts.
+- Use job queues (e.g., Redis/RQ, Celery, or cloud batch) for processing large volumes of scenes.
+
+---
+
+## Security & privacy
+
+- Avoid committing raw satellite scenes and model checkpoints to the repo.
+- Secure API endpoints with authentication and rate limiting.
+- Sanitize user‑uploaded files and validate input formats.
+
+---
+
+## Contributing
+
+- Fork the repo, create a feature branch, and open a pull request with a clear description and tests.
+- Follow the existing style and linting rules for TypeScript and Python.
+- Add unit tests and integration tests for any new pipeline components.
+
+---
+
+## License & citation
+
+- Add your license file (e.g., MIT, Apache-2.0). If no license is present, indicate preferred license here.
+- When citing OCEANNOVA in publications, include:
+  - Project name, repository URL, and a short description of the model and dataset used.
+
+---
+
+## Maintainers / Contact
+
+- Maintainer: dragunxwho13 (GitHub)
+- For issues and feature requests: open an issue in this repository.
