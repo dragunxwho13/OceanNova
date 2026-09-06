@@ -204,17 +204,6 @@ Use authentication/authorization for production deployments.
 - Follow the existing style and linting rules for TypeScript and Python.
 - Add unit tests and integration tests for any new pipeline components.
 
----
-
-## License & citation
-
-- Add your license file (e.g., MIT, Apache-2.0). If no license is present, indicate preferred license here.
-- When citing OCEANNOVA in publications, include:
-  - Project name, repository URL, and a short description of the model and dataset used.
-
----
-
-## Maintainers / Contact
 
 - Maintainer: dragunxwho13 (GitHub)
 - For issues and feature requests: open an issue in this repository.
