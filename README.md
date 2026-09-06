@@ -101,34 +101,6 @@ PACE hyperspectral data (+ NOAA / ISRO context, optional)
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for module-by-module
 detail and design rationale.
 
-## Repo structure
-
-```
-oceannova/
-├── app/
-│   └── streamlit_app.py        # Interactive demo: map, spectrum plot, evidence card
-├── src/oceannova/
-│   ├── synthetic_data.py       # PACE-shaped synthetic data generator (offline dev)
-│   ├── io_pace.py              # Real PACE OCI L2 NetCDF loader (stub — implement when ready)
-│   ├── preprocessing.py        # QC, spectral normalization, derivative features
-│   ├── anomaly.py              # Stage 1: AnomalyDetector (PCA + Isolation Forest)
-│   ├── classifier.py           # Stage 2/3: CauseClassifier (RF + unknown detection)
-│   ├── explain.py              # EvidenceCard builder ("why is this anomalous?")
-│   └── pipeline.py             # End-to-end pipeline runner
-├── tests/
-│   └── test_pipeline.py        # Smoke tests for every stage
-├── notebooks/                  # For exploratory analysis
-├── data/
-│   ├── raw/                    # Real PACE granules go here (gitignored)
-│   └── processed/              # Pipeline outputs (gitignored)
-├── docs/
-│   ├── OCEANNOVA_Full_Hackathon_Plan.pdf
-│   ├── ARCHITECTURE.md
-│   └── ROADMAP.md
-├── requirements.txt
-├── pyproject.toml
-└── LICENSE
-```
 
 ## Using real PACE data
 
