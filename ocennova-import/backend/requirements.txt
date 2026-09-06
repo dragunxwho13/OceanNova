@@ -1,0 +1,16 @@
+numpy>=1.26
+pandas>=2.1
+scikit-learn>=1.4
+scipy>=1.11
+
+# App / visualization
+streamlit>=1.35
+plotly>=5.20
+
+# Real PACE data (optional, needed only once wiring in io_pace.py)
+# xarray>=2024.3
+# netCDF4>=1.6
+# earthaccess>=0.9
+
+# Dev / testing
+pytest>=8.0
