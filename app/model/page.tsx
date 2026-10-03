@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AnomalyWorldMap } from "./AnomalyWorldMap";
+import { ForecastBoard } from "./ForecastBoard";
 import { ModelWorkspace } from "./ModelWorkspace";
 
 export const metadata: Metadata = {
   title: "OCEANNOVA — Live Model Workspace",
   description:
-    "The OCEANNOVA detection model running live: continuously ingesting NASA PACE OCI L2 granules and NOAA ocean data, then detecting, explaining and classifying ocean anomalies.",
+    "The OCEANNOVA detection model running live: continuously ingesting NASA PACE OCI L2 granules and NOAA ocean data, then detecting, explaining, classifying ocean anomalies — and forecasting the next seven days with ForecastCNN.",
 };
 
 type ModelPageProps = {
@@ -31,6 +32,7 @@ export default async function ModelPage({ searchParams }: ModelPageProps) {
         </Link>
       </div>
       <AnomalyWorldMap />
+      <ForecastBoard />
     </main>
   );
 }

@@ -35,6 +35,24 @@ type RealSnapshot = {
 };
 
 export async function GET() {
+  // Without an explicitly configured heavy pipeline, do not attempt the (fictitious)
+  // same-origin FastAPI mount — the in-repo CNN already covers detection/forecast
+  // through /api/live-anomalies + /api/forecast; pixel-level L2 processing is the
+  // only thing that genuinely needs ML_SERVICE_URL.
+  if (!configuredServiceUrl()) {
+    return NextResponse.json({
+      live: false,
+      status: "LOCAL_ENGINE_ONLY",
+      message: "Pixel-level NASA PACE L2 processing runs in the optional ML service; the in-repo CNN engine (detection, classification, 7-day forecast) is active at /api/model-health and /api/forecast.",
+      pace_granules: 0,
+      candidate_pixels: 0,
+      valid_coordinates: 0,
+      anomaly_pixels: 0,
+      map_points: 0,
+      points: [],
+    });
+  }
+
   const serviceUrl = await serviceBaseUrl();
 
   if (!serviceUrl) {

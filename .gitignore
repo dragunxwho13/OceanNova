@@ -13,3 +13,8 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+# ML training caches + local data (trained weights in ml/weights ARE committed)
+.cache/
+data/
+next-env.d.ts
+tsconfig.tsbuildinfo

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radar, ScanSearch, Boxes, HelpCircle } from "lucide-react";
+import { Radar, ScanSearch, Boxes, HelpCircle, TrendingUp } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 import { WaveField } from "@/components/WaveField";
 
@@ -61,8 +61,22 @@ const TABS: Tab[] = [
     method: "Stacked multimodal ensemble",
   },
   {
+    id: "predict",
+    chip: "04 · PREDICT",
+    title: "Predict what comes next",
+    icon: TrendingUp,
+    accent: "#FFD166",
+    body: "ForecastCNN reads a 14-day window of each region's daily ocean-color, SST and turbidity — scored against its own early-window climatology — and projects per-day anomaly probabilities seven days ahead, attributing the most likely cause before the event breaks the surface threshold.",
+    points: [
+      "Convolutional temporal encoder over live ERDDAP series",
+      "Per-day probabilities plus cause softmax, not a single number",
+      "Explained in natural language by Gemini 2.5 Flash",
+    ],
+    method: "ForecastCNN temporal outlook",
+  },
+  {
     id: "unknown",
-    chip: "04 · FLAG THE UNKNOWN",
+    chip: "05 · FLAG THE UNKNOWN",
     title: "Flag the unknown",
     icon: HelpCircle,
     accent: "#FF6B6B",

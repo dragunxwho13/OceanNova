@@ -28,7 +28,55 @@ function serviceUrl(request: Request) {
   return new URL("/api", request.url).toString().replace(/\/$/, "");
 }
 
+async function localCnnFallback(request: Request) {
+  // The remote service is unavailable — serve the in-repo ForecastCNN outlook
+  // instead of an empty body, honestly labeled as a regional model outlook.
+  try {
+    const { getOutlooks } = await import("@/lib/ml/forecast-service");
+    const outlooks = await getOutlooks();
+    const points = outlooks
+      .filter((o) => o.risk && o.forecastModel !== "unavailable")
+      .map((o) => ({
+        id: `cnn-${o.region.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        latitude: o.coordinates[1],
+        longitude: o.coordinates[0],
+        anomaly_score: o.probability,
+        confidence: Math.min(0.95, o.peakSeverity),
+        severity: o.probability >= 70 ? "high" : o.probability >= 50 ? "medium" : "low",
+        cause: o.cause,
+        cause_probabilities: o.causeProbabilities,
+        source: `ForecastCNN ${o.forecastModel} · ${o.source} input · not a pixel observation`,
+      }));
+    return {
+      live: points.length > 0,
+      status: points.length ? "LOCAL_CNN_OUTLOOK" : "REAL_FEED_UNAVAILABLE",
+      fallback: "cached" as const,
+      fallback_reason: "ML service unavailable; serving in-repo ForecastCNN regional outlook",
+      updated_at: new Date().toISOString(),
+      model_version: outlooks[0]?.forecastModel ?? "unavailable",
+      pace_granules: 0,
+      candidate_pixels: 0,
+      anomaly_pixels: points.length,
+      points: [],
+      forecast_points: points.map((p) => ({ ...p, horizon_hours: "24-168", forecast_basis: "14-day regional ocean-color window scored by ForecastCNN", forecast_type: "cnn-regional-outlook" })),
+      provenance: { engine: "local-cnn-tfjs" },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function unavailable(request: Request) {
+  const local = await localCnnFallback(request);
+  if (local) return NextResponse.json(local);
+  return NextResponse.json({ live: false, status: "REAL_FEED_UNAVAILABLE", points: [], forecast_points: [] });
+}
+
 export async function GET(request: Request) {
+  if (!process.env.ML_SERVICE_URL?.trim()) {
+    // No remote pipeline configured → serve the in-repo ForecastCNN outlook directly.
+    return await unavailable(request);
+  }
   const base = serviceUrl(request);
   if (!base) return NextResponse.json({ live: false, status: "PACE_AUTH_REQUIRED", points: [], forecast_points: [] });
   try {
@@ -52,10 +100,10 @@ export async function GET(request: Request) {
     }
     const parsed = SnapshotSchema.safeParse(await response.json());
     if (!response.ok || !parsed.success) {
-      return NextResponse.json({ live: false, status: "REAL_FEED_UNAVAILABLE", points: [], forecast_points: [] });
+      return await unavailable(request);
     }
     if (!parsed.data.live && !parsed.data.fallback) {
-      return NextResponse.json({ live: false, status: "REAL_FEED_UNAVAILABLE", points: [], forecast_points: [] });
+      return await unavailable(request);
     }
     const points = parsed.data.points.filter((point) => point.latitude >= -90 && point.latitude <= 90 && point.longitude >= -180 && point.longitude <= 180);
     const isFallback = Boolean(parsed.data.fallback);
@@ -72,6 +120,6 @@ export async function GET(request: Request) {
       })),
     });
   } catch {
-    return NextResponse.json({ live: false, status: "REAL_FEED_UNAVAILABLE", points: [], forecast_points: [] });
+    return await unavailable(request);
   }
 }

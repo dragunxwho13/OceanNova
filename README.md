@@ -109,6 +109,27 @@ NASA PACE L2 AOP Data (Hyperspectral Rrs)
 | `train_cnn.py` | CNN training for cause classification |
 | `train_real.py` | Real data training on PACE granules |
 
+### In-Repo CNN Engine (`lib/ml/`) ⭐ *Vercel-native*
+
+The full detection + prediction product runs **inside the Next.js deployment** with no external
+ML server. It uses **TensorFlow.js (pure CPU)** so it works on Vercel serverless functions:
+
+| File | Purpose |
+|------|---------|
+| `lib/ml/models.ts` | `SpectralCNN` (32-band conv1d → anomaly score + cause softmax) and `ForecastCNN` (14-day × 7-feature temporal conv → 7-day outlook) |
+| `lib/ml/engine.ts` | Request-time inference: CNN heads + 7 statistical novelty detectors (Mahalanobis, PCA reconstruction, band z-peak, greenness, gradient, entropy) fused with the CNN, OOD gate vs. class prototypes, per-band evidence |
+| `lib/ml/data.ts` | Daily regional series from public **NOAA CoastWatch ERDDAP** (chlor_a / SST / Kd490 — no API key) + NDBC buoy sea state, with cache and honest `live/cached/reference` provenance |
+| `lib/ml/forecast-service.ts` | ForecastCNN outlooks per region + **Gemini 2.5 Flash** explanations (only model API used; falls back to a model-generated summary without a key) |
+| `ml/train.ts` + `ml/synth.ts` | Training pipeline. `pnpm train` rebuilds `ml/weights/` (committed). Data source `auto`: real ERDDAP weak-labeled windows when reachable, otherwise the physically-motivated synthetic generator; `--source synthetic|erddap` to force either |
+
+API surface: `POST /api/hyperspectral/analyze` (spectrum → full analysis),
+`GET /api/forecast` (CNN 7-day outlook per region), `GET /api/model-health`
+(engine + weights + optional remote service), and `/api/live-anomalies` which
+mixes ForecastCNN outlook points into the map's forecast field.
+
+The optional FastAPI backend remains fully supported: set `ML_SERVICE_URL` and
+these routes proxy to it instead, keeping the same response contract.
+
 ### Frontend Dashboard (`app/`, `components/`, `sections/`)
 
 **Tech Stack:**
@@ -155,11 +176,9 @@ cd oceannova
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your credentials:
-#   EARTHDATA_USERNAME=your_username
-#   EARTHDATA_PASSWORD=your_password
-#   DATABASE_URL=postgresql://user:pass@localhost/oceannova
-#   GEMINI_API_KEY=your_gemini_key
+# Vercel-native minimum: NOTHING required. GEMINI_API_KEY is optional
+# (adds LLM explanations). EARTHDATA_* / ML_SERVICE_URL only for the
+# optional remote FastAPI backend; DATABASE_URL for anomaly persistence.
 ```
 
 ### 2️⃣ Install Dependencies
@@ -180,15 +199,18 @@ npm install
 pnpm install
 ```
 
-### 3️⃣ Download Pre-trained Models
+### 3️⃣ Models
+
+Trained CNN weights ship in `ml/weights/` (small, pure-TensorFlow.js). Rebuild them anytime:
 
 ```bash
-# Download pre-trained ensemble models (~500MB)
-python ml_service/download_artifacts.py
-
-# Or train from scratch (requires NASA credentials):
-python ml_service/train_real.py --days_back 30 --limit 20
+pnpm train                     # auto: real CoastWatch ERDDAP data if reachable, else synthetic
+pnpm train --source synthetic  # fully offline, deterministic
+pnpm train --source erddap     # force real NOAA CoastWatch series (weak labels)
 ```
+
+(For the optional heavy FastAPI pipeline: `python ml_service/train_real.py --days_back 30 --limit 20`
+and set `ML_SERVICE_URL` — the Next.js routes proxy to it automatically.)
 
 ### 4️⃣ Start ML Service
 
@@ -471,18 +493,25 @@ docker build -t oceannova-web .
 docker run -p 3000:3000 oceannova-web
 ```
 
-### Vercel Deployment (Recommended for Frontend)
+### Vercel Deployment — the whole product, one deploy
 
 ```bash
 # Install Vercel CLI
 npm i -g vercel
 
-# Deploy
-vercel deploy
+vercel            # preview
+vercel --prod     # production
 
-# With environment variables
-vercel deploy --env NEXT_PUBLIC_API_URL=https://api.oceannova.ai
+# Optional env (Vercel dashboard): GEMINI_API_KEY for LLM explanations.
+# The CNN engine, ERDDAP/NDBC data feeds and the whole UI need no keys at all.
 ```
+
+Notes:
+- `next.config.mjs` keeps `@tensorflow/tfjs` external and traces `ml/weights/**`
+  into the serverless bundle automatically.
+- First request to an ML route pays a ~1–2 s cold weight-load; everything after
+  is cached in the warm instance (≈10–50 ms inference).
+- Forecast/analyze routes set `maxDuration = 30`.
 
 ### AWS/GCP/Azure
 

@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "train": "tsc -p tsconfig.ml.json && node .cache/ml-build/ml/train.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
+    "@tensorflow/tfjs": "4.22.0",
     "@turf/boolean-point-in-polygon": "^7.4.0",
     "@vercel/analytics": "1.6.1",
     "ai": "^7.0.93",

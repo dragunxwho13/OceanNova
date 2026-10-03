@@ -20,6 +20,7 @@ export type BuoyObs = {
   lon: number;
   waterTempC: number | null;
   waveHeightM: number | null;
+  windMs?: number | null;
   time: string;
 };
 
@@ -146,6 +147,7 @@ export async function fetchNdbcLatestObs(): Promise<{ data: BuoyObs[]; live: boo
       const lat = Number(latStr);
       const lon = Number(lonStr);
       const wvht = Number(cols[11]);
+      const wspd = Number(cols[9]);
       const wtmp = Number(cols[14]);
       if (Number.isNaN(lat) || Number.isNaN(lon)) continue;
       data.push({
@@ -155,6 +157,7 @@ export async function fetchNdbcLatestObs(): Promise<{ data: BuoyObs[]; live: boo
         lon,
         waterTempC: Number.isFinite(wtmp) && wtmp < 90 ? wtmp : null,
         waveHeightM: Number.isFinite(wvht) && wvht < 90 ? wvht : null,
+        windMs: Number.isFinite(wspd) && wspd < 90 ? wspd : null,
         time: "latest",
       });
     }

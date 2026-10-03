@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": ".cache/ml-build",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["ml/**/*.ts", "lib/ml/features.ts", "lib/ml/constants.ts", "lib/ml/models.ts", "lib/ml/fsio.ts", "lib/ml/data.ts"]
+}
